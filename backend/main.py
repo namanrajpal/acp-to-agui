@@ -75,3 +75,7 @@ app.include_router(git.router, prefix="/api", tags=["git"])
 from backend.sessions.routes import router as sessions_router
 
 app.include_router(sessions_router, tags=["sessions"])
+
+from backend.agui_endpoint import router as agui_router
+
+app.include_router(agui_router, tags=["ag-ui"])
