@@ -49,7 +49,7 @@ graph TB
     bridge -->|"AG-UI Events over SSE"| frontends
 
     subgraph frontends["Your Frontend"]
-        F1["Reference UI"] ~~~ F2["CopilotKit"] ~~~ F3["HttpAgent"] ~~~ F4["Anything"]
+        F1["Reference UI"] ~~~ F2["CopilotKit"] ~~~ F3["AG-UI HttpAgent"] ~~~ F4["Anything"]
     end
 
     style agents fill:#1e3a5f,stroke:#60a5fa,color:#fff
@@ -216,7 +216,7 @@ graph TB
 
     path1["Reference UI\nFull React app, ~2000 lines, full control"]
     path2["CopilotKit\nCopilotChat component, ~20 lines, ship fast"]
-    path3["HttpAgent\n@ag-ui/client, ~50 lines, build anything"]
+    path3["AG-UI HttpAgent\n@ag-ui/client, ~50 lines, build anything"]
 
     style bridge fill:#3b1f6e,stroke:#a78bfa,color:#fff
     style path1 fill:#1e3a5f,stroke:#60a5fa,color:#fff
@@ -228,7 +228,7 @@ graph TB
 |----------|--------------|----------|
 | **Reference UI** (`reference-ui/`) | ~2000 | You want full control over every pixel |
 | **CopilotKit** (`examples/copilotkit-demo/`) | ~20 | You want to ship fast with production features |
-| **HttpAgent** (`examples/httpagent-demo/`) | ~50 | You want the raw protocol with your own UI framework |
+| **AG-UI HttpAgent** (`examples/httpagent-demo/`) | ~50 | You want the raw protocol with your own UI framework |
 
 ## How It Works
 
@@ -236,7 +236,7 @@ graph TB
 2. **Create a session**: `POST /v2/tasks` spawns the agent subprocess, initializes ACP
 3. **Start a run**: `POST /v2/tasks/{id}/run` sends your prompt via JSON-RPC
 4. **Stream events**: `GET /v2/tasks/{id}/events?runId=...` returns AG-UI SSE stream
-5. **Or use the standard endpoint**: `POST /ag-ui` (what CopilotKit and HttpAgent use)
+5. **Or use the standard endpoint**: `POST /ag-ui` (what CopilotKit and AG-UI HttpAgent use)
 6. **Handle approvals**: `POST /v2/tasks/{id}/approval` resolves pending tool permissions
 
 ## Project Structure
@@ -253,7 +253,7 @@ graph TB
 ├── reference-ui/               # Full React frontend (Vite + Tailwind)
 ├── examples/
 │   ├── copilotkit-demo/        # CopilotKit in 20 lines
-│   ├── httpagent-demo/         # Raw @ag-ui/client HttpAgent
+│   ├── httpagent-demo/         # Raw @ag-ui/client AG-UI HttpAgent
 │   └── agents.md              # Agent configuration guide
 ├── docs/
 │   ├── architecture.md         # Detailed system design
@@ -276,7 +276,7 @@ The backend exposes a **standard AG-UI endpoint** at `POST /ag-ui`. Any AG-UI cl
   <CopilotChat />
 </CopilotKit>
 
-// HttpAgent
+// AG-UI HttpAgent (@ag-ui/client)
 const agent = new HttpAgent({ url: "http://localhost:8000/ag-ui" });
 agent.run({ messages, threadId }).subscribe(event => ...);
 ```
