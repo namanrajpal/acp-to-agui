@@ -31,32 +31,19 @@ This project is a **protocol bridge** that sits between any ACP agent and any we
 ```mermaid
 graph TB
     subgraph agents["ACP Agents (33+)"]
-        direction LR
-        A1["kiro-cli"]
-        A2["claude-agent-acp"]
-        A3["codex"]
-        A4["gemini cli"]
-        A5["cursor"]
-        A6["ANY ACP binary"]
+        A1["kiro-cli"] ~~~ A2["claude-agent-acp"] ~~~ A3["codex"] ~~~ A4["gemini cli"] ~~~ A5["cursor"] ~~~ A6["ANY ACP binary"]
     end
 
     agents <-->|"JSON-RPC 2.0 over stdio"| bridge
 
     subgraph bridge["This Bridge (Python / FastAPI)"]
-        direction LR
-        B1["AgentRunner"]
-        B2["AcpToAguiBridge"]
-        B3["SessionManager"]
+        B1["AgentRunner"] ~~~ B2["AcpToAguiBridge"] ~~~ B3["SessionManager"]
     end
 
     bridge -->|"AG-UI Events over SSE"| frontends
 
     subgraph frontends["Your Frontend"]
-        direction LR
-        F1["Reference UI"]
-        F2["CopilotKit"]
-        F3["HttpAgent"]
-        F4["Anything"]
+        F1["Reference UI"] ~~~ F2["CopilotKit"] ~~~ F3["HttpAgent"] ~~~ F4["Anything"]
     end
 
     style agents fill:#1e3a5f,stroke:#60a5fa,color:#fff
