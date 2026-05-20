@@ -1,16 +1,23 @@
 # Agent Configuration Examples
 
-## How It Works
+This guide shows how to use the ACP → AG-UI bridge with real agents. Each example includes installation, configuration, and verification steps.
 
-The `agentCommand` field in `bridge.config.json` tells the bridge which binary to spawn. The binary must:
+---
 
-1. Accept communication via stdin/stdout (JSON-RPC 2.0, newline-delimited JSON)
-2. Implement the ACP protocol (at minimum: `initialize`, `session/new`, `session/prompt`)
-3. Send `session/update` notifications with streaming content
+## Kiro CLI
 
-## Configuration Examples
+[Kiro CLI](https://kiro.dev) is Amazon's coding agent with full ACP support.
 
-### Kiro CLI
+### Install
+
+Download from [kiro.dev/downloads](https://kiro.dev/downloads/). After installation, verify:
+
+```bash
+which kiro-cli
+# Typically: ~/.local/bin/kiro-cli
+```
+
+### Configure
 
 ```json
 {
@@ -18,115 +25,221 @@ The `agentCommand` field in `bridge.config.json` tells the bridge which binary t
 }
 ```
 
-Kiro CLI is Amazon's coding agent. Install via [kiro.dev](https://kiro.dev).
-
-### Claude Code
+Or with a specific agent configuration:
 
 ```json
 {
-  "agentCommand": ["claude", "code", "--acp"]
+  "agentCommand": ["kiro-cli", "acp", "--agent", "my-agent"]
 }
 ```
 
-Note: Claude Code ACP support may require a specific version. Check [Anthropic's docs](https://docs.anthropic.com) for availability.
+### Environment Variables
 
-### Codex CLI
+| Variable | Description |
+|----------|-------------|
+| `KIRO_LOG_LEVEL` | Set to `debug` for verbose logging |
+| `KIRO_CHAT_LOG_FILE` | Custom log file path |
+
+### Session Data
+
+Sessions are stored at `~/.kiro/sessions/cli/` with `.json` metadata and `.jsonl` event logs.
+
+### Verify It Works
+
+```bash
+# Start the bridge
+pnpm dev
+
+# In another terminal, check the backend logs for:
+# "Spawned agent ['kiro-cli', 'acp'] PID=..."
+# "← notification: session/update"
+```
+
+### ACP Features Supported
+
+- Modes: `default`, `browser-agent`, `architect`, `ask`, custom agents
+- Slash commands: advertised via `_kiro.dev/commands/available`
+- MCP servers: configured via `mcpServers` in task creation
+- Tool approvals: full `session/request_permission` support
+- Session resume: via `session/load`
+
+---
+
+## Claude Agent (via claude-agent-acp)
+
+[claude-agent-acp](https://github.com/agentclientprotocol/claude-agent-acp) is an ACP adapter for the official Claude Agent SDK by Zed Industries. It wraps Anthropic's Claude Agent SDK to speak ACP over stdio.
+
+### Prerequisites
+
+- Node.js 18+
+- An Anthropic API key (`ANTHROPIC_API_KEY`)
+
+### Install
+
+```bash
+# Option 1: Install globally
+npm install -g @agentclientprotocol/claude-agent-acp
+
+# Option 2: Use npx (no install needed)
+# The bridge will run: npx @agentclientprotocol/claude-agent-acp
+
+# Option 3: Clone and build from source
+git clone https://github.com/agentclientprotocol/claude-agent-acp.git
+cd claude-agent-acp
+npm install
+npm run build
+```
+
+### Configure
+
+If installed globally:
 
 ```json
 {
-  "agentCommand": ["codex", "--acp"]
+  "agentCommand": ["claude-agent-acp"]
 }
 ```
 
-OpenAI's Codex CLI with ACP transport enabled.
-
-### Gemini CLI
+If using npx:
 
 ```json
 {
-  "agentCommand": ["gemini", "cli", "acp"]
+  "agentCommand": ["npx", "@agentclientprotocol/claude-agent-acp"]
 }
 ```
 
-Google's Gemini CLI agent.
-
-### Cursor
+If built from source:
 
 ```json
 {
-  "agentCommand": ["cursor", "--acp"]
+  "agentCommand": ["node", "/path/to/claude-agent-acp/dist/index.js"]
 }
 ```
 
-### OpenCode
+### Environment Variables
+
+Set your Anthropic API key before starting the bridge:
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+pnpm dev
+```
+
+Or add it to a `.env` file in the project root:
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+### ACP Features Supported
+
+- Context @-mentions and images
+- Tool calls with permission requests
+- Edit review
+- TODO lists
+- Interactive and background terminals
+- Custom slash commands
+- Client MCP servers
+
+### Verify It Works
+
+```bash
+# Set API key
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+# Start the bridge
+pnpm dev
+
+# Open http://localhost:5173
+# Create a task, send a message
+# You should see Claude's streaming response in the chat panel
+```
+
+---
+
+## Running the Demo (End-to-End)
+
+Here's the complete flow to go from zero to a working web UI on top of an ACP agent:
+
+### Step 1: Clone and install
+
+```bash
+git clone https://github.com/your-username/acp-to-agui.git
+cd acp-to-agui
+pnpm install
+```
+
+### Step 2: Choose your agent
+
+Edit `bridge.config.json`:
 
 ```json
 {
-  "agentCommand": ["opencode", "acp"]
+  "agentCommand": ["claude-agent-acp"]
 }
 ```
 
-SST's open-source coding agent.
+### Step 3: Set credentials (if needed)
 
-### Cline
-
-```json
-{
-  "agentCommand": ["cline", "--acp"]
-}
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-### GitHub Copilot CLI
+### Step 4: Start
 
-```json
-{
-  "agentCommand": ["github-copilot-cli", "--acp"]
-}
+```bash
+pnpm dev
 ```
 
-Note: Currently in public preview.
+This starts:
+- Backend at `http://localhost:8000` (FastAPI, spawns your agent)
+- Frontend at `http://localhost:5173` (React, connects via SSE)
 
-### Custom Agent
+### Step 5: Use it
 
-Any binary that speaks ACP over stdio:
+1. Open `http://localhost:5173`
+2. Select a project directory
+3. The bridge spawns your agent subprocess and initializes ACP
+4. Type a message — it flows through JSON-RPC to your agent
+5. The agent's response streams back as AG-UI events
+6. Tool calls appear with approval dialogs
+7. You have a full web workspace powered by a CLI agent
 
-```json
-{
-  "agentCommand": ["/path/to/my-agent", "--mode", "acp"]
-}
-```
+---
 
-## Environment Variables
+## How This Project Helped
 
-You can set environment variables for the agent process by modifying the runner's `spawn()` call. The bridge passes through the parent process environment plus:
+Without this bridge, connecting an ACP agent to a web UI would require:
 
-- `AGENT_LOG_LEVEL` — Set to `debug` for verbose agent logging (when `debug=True`)
-- `AGENT_LOG_FILE` — Path for agent log output
+1. **Subprocess management** — spawning, monitoring, killing the agent process
+2. **JSON-RPC implementation** — bidirectional message parsing, request correlation, error handling
+3. **Protocol translation** — converting ACP's notification model to frontend-friendly events
+4. **State tracking** — open messages, open tool calls, pending approvals
+5. **SSE streaming** — encoding events, keepalives, connection lifecycle
+6. **Task persistence** — SQLite store for session metadata
+7. **Approval flow** — holding RPC IDs, emitting state updates, responding to agent
 
-## Verifying Your Agent Works
+This project handles all of that. You just:
+- Set `agentCommand` to your agent binary
+- Build your frontend consuming AG-UI events from the SSE stream
+- Or use the reference UI as-is
 
-1. Start the bridge: `pnpm dev`
-2. Create a task via the UI or REST API
-3. Check the backend logs for:
-   - `Spawned agent [...] PID=...` — agent started successfully
-   - `← notification: session/update` — agent is sending events
-4. If you see `Process exited (code=1)`, your agent command is likely wrong
+**Time to first working UI: ~2 minutes** (clone, configure, `pnpm dev`).
 
-## Minimum ACP Implementation
+---
 
-For an agent to work with this bridge, it must handle these JSON-RPC methods:
+## Other Agents
 
-**Requests (bridge → agent):**
-- `initialize` — respond with protocol version and capabilities
-- `session/new` — respond with `{ sessionId: "..." }`
-- `session/prompt` — process the prompt, send updates, respond when done
+Any ACP-compatible agent works. Here are more examples:
 
-**Notifications (agent → bridge):**
-- `session/update` — with `sessionUpdate` field: `agent_message_chunk`, `tool_call`, `tool_call_update`, `turn_end`
+| Agent | Install | Command |
+|-------|---------|---------|
+| Codex CLI | `npm i -g @openai/codex` | `["codex", "--acp"]` |
+| Gemini CLI | [gemini.google.com/cli](https://gemini.google.com/cli) | `["gemini", "cli", "acp"]` |
+| Cursor | Built into Cursor IDE | `["cursor", "--acp"]` |
+| OpenCode | `go install github.com/sst/opencode@latest` | `["opencode", "acp"]` |
+| Cline | [cline.bot](https://cline.bot) | `["cline", "--acp"]` |
+| GitHub Copilot | Part of GitHub CLI | `["github-copilot-cli", "--acp"]` |
+| Goose | [github.com/block/goose](https://github.com/block/goose) | `["goose", "--acp"]` |
 
-**Optional but recommended:**
-- `session/request_permission` — request tool approval from the user
-- `session/cancel` — handle cancellation gracefully
-- `session/set_mode` — support mode switching
-
-See the full ACP spec at [agentclientprotocol.com](https://agentclientprotocol.com).
+See the full list of 33+ ACP agents at [agentclientprotocol.com/get-started/agents](https://agentclientprotocol.com/get-started/agents).
