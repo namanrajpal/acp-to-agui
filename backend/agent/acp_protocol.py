@@ -1,93 +1,98 @@
-"""AcpProtocol — typed interface over AgentRunner.
+"""AcpProtocol — thin logging wrapper over the SDK's ClientSideConnection.
 
-High-level methods for each ACP operation so callers don't need to
-construct raw JSON-RPC params.
+Since the SDK already provides typed methods on ClientSideConnection,
+this module is kept minimal. It adds structured logging and provides a
+stable interface that the session manager depends on.
 """
 
 import logging
 from typing import Any
 
-from backend.types.acp import (
-    InitializeParams,
-    InitializeResult,
-    PromptContent,
-    SessionNewParams,
-    SessionNewResult,
-)
-from backend.agent.runner import AgentRunner
+import acp
 
 logger = logging.getLogger(__name__)
 
 
 class AcpProtocol:
-    """Typed ACP protocol layer over an AgentRunner instance."""
+    """Typed ACP protocol layer over the SDK's ClientSideConnection.
 
-    def __init__(self, runner: AgentRunner) -> None:
-        self._runner = runner
+    Wraps conn methods with logging. The conn is set after spawn.
+    """
+
+    def __init__(self, task_id: str) -> None:
+        self._conn: acp.ClientSideConnection | None = None
+        self._log = logging.LoggerAdapter(logger, {"task_id": task_id})
 
     @property
-    def runner(self) -> AgentRunner:
-        return self._runner
+    def conn(self) -> acp.ClientSideConnection:
+        if self._conn is None:
+            raise RuntimeError("AcpProtocol: connection not set (agent not spawned)")
+        return self._conn
 
-    async def initialize(self) -> InitializeResult:
-        params = InitializeParams()
-        result = await self._runner.request(
-            "initialize", params.model_dump(by_alias=True)
+    @conn.setter
+    def conn(self, value: acp.ClientSideConnection) -> None:
+        self._conn = value
+
+    async def initialize(self) -> Any:
+        self._log.info("Initializing ACP connection")
+        result = await self.conn.initialize(
+            protocol_version=acp.PROTOCOL_VERSION,
+            client_info={"name": "acp-to-agui", "version": "0.1.0"},
         )
-        return InitializeResult.model_validate(result)
+        self._log.info("ACP initialized: %s", result)
+        return result
 
-    async def session_new(
-        self, cwd: str, mcp_servers: list[dict[str, Any]] | None = None
-    ) -> SessionNewResult:
-        params = SessionNewParams(cwd=cwd, mcpServers=mcp_servers or [])
-        result = await self._runner.request(
-            "session/new", params.model_dump(by_alias=True)
-        )
-        if isinstance(result, dict):
-            models_info = result.get("models")
-            if models_info:
-                available = models_info.get("availableModels", [])
-                current = models_info.get("currentModelId", "unknown")
-                model_ids = [m.get("id", m) if isinstance(m, dict) else m for m in available]
-                logger.info("Available models: %s (current: %s)", model_ids, current)
-        return SessionNewResult.model_validate(result)
+    async def new_session(
+        self, cwd: str, mcp_servers: list | None = None
+    ) -> Any:
+        self._log.info("Creating new session (cwd=%s)", cwd)
+        result = await self.conn.new_session(cwd=cwd, mcp_servers=mcp_servers or [])
+        self._log.info("Session created: %s", getattr(result, "session_id", result))
+        return result
 
-    async def session_load(
+    async def load_session(
         self, session_id: str, cwd: str, mcp_servers: list[dict[str, Any]] | None = None
-    ) -> dict[str, Any]:
-        return await self._runner.request(
-            "session/load",
-            {"sessionId": session_id, "cwd": cwd, "mcpServers": mcp_servers or []},
-        )
+    ) -> Any:
+        self._log.info("Loading session %s (cwd=%s)", session_id, cwd)
+        # The SDK may expose this as a method on conn; use ext_method as fallback
+        try:
+            result = await self.conn.ext_method(
+                "session/load",
+                {"sessionId": session_id, "cwd": cwd, "mcpServers": mcp_servers or []},
+            )
+        except AttributeError:
+            # If ext_method doesn't exist, try direct method call
+            result = await self.conn.new_session(cwd=cwd, mcp_servers=mcp_servers or [])
+        return result
 
-    async def session_prompt(self, session_id: str, content: list[PromptContent]) -> None:
-        await self._runner.request(
-            "session/prompt",
-            {
-                "sessionId": session_id,
-                "prompt": [c.model_dump(by_alias=True, exclude_none=True) for c in content],
-            },
-        )
+    async def prompt(self, session_id: str, prompt: list[dict[str, Any]]) -> Any:
+        self._log.debug("Sending prompt to session %s", session_id)
+        from acp.schema import TextContentBlock, ImageContentBlock
+        content_blocks = []
+        for item in prompt:
+            if item.get("type") == "image":
+                content_blocks.append(ImageContentBlock(type="image", data=item.get("data", ""), media_type=item.get("mimeType", "image/png")))
+            else:
+                content_blocks.append(TextContentBlock(type="text", text=item.get("text", "")))
+        result = await self.conn.prompt(prompt=content_blocks, session_id=session_id)
+        return result
 
-    def session_cancel(self, session_id: str) -> None:
-        self._runner.notify("session/cancel", {"sessionId": session_id})
+    def cancel(self, session_id: str) -> None:
+        self._log.info("Cancelling session %s", session_id)
+        self.conn.cancel(session_id=session_id)
 
     async def set_mode(self, session_id: str, mode_id: str) -> Any:
-        return await self._runner.request(
-            "session/set_mode", {"sessionId": session_id, "modeId": mode_id}
-        )
+        self._log.info("Setting mode %s for session %s", mode_id, session_id)
+        return await self.conn.set_session_mode(mode_id=mode_id, session_id=session_id)
 
-    async def set_model(self, session_id: str, model_id: str) -> None:
-        await self._runner.request(
-            "session/set_model", {"sessionId": session_id, "modelId": model_id}
-        )
+    async def set_model(self, session_id: str, model_id: str) -> Any:
+        self._log.info("Setting model %s for session %s", model_id, session_id)
+        return await self.conn.set_session_model(model_id=model_id, session_id=session_id)
 
-    async def execute_command(self, session_id: str, command: str, args: str | None = None) -> None:
+    async def execute_command(self, session_id: str, command: str, args: str | None = None) -> Any:
+        self._log.info("Executing command /%s for session %s", command, session_id)
         name = command.lstrip("/")
-        await self._runner.request(
+        return await self.conn.ext_method(
             "session/command",
             {"sessionId": session_id, "command": {"command": name, "args": args or ""}},
         )
-
-    def respond(self, request_id: int | str, result: Any) -> None:
-        self._runner.respond(request_id, result)

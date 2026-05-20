@@ -1,4 +1,4 @@
-"""Task API request/response models."""
+"""Session API request/response models."""
 
 from typing import Any, Literal
 

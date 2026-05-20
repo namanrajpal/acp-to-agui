@@ -29,20 +29,20 @@ async def lifespan(app: FastAPI):
 
     app.state.config = config
 
-    from backend.tasks.store import TaskStore
-    task_store = TaskStore(db_path=config.db_path)
-    await task_store.initialize()
-    app.state.task_store = task_store
+    from backend.sessions.store import SessionStore
+    session_store = SessionStore(db_path=config.db_path)
+    await session_store.initialize()
+    app.state.session_store = session_store
 
-    from backend.tasks.manager import TaskManager
-    task_manager = TaskManager(task_store, agent_command=config.agent_command)
-    app.state.task_manager = task_manager
+    from backend.sessions.manager import SessionManager
+    session_manager = SessionManager(session_store, agent_command=config.agent_command)
+    app.state.session_manager = session_manager
 
     yield
 
     logger.info("Shutting down ACP → AG-UI Bridge")
-    await task_manager.shutdown()
-    await task_store.close()
+    await session_manager.shutdown()
+    await session_store.close()
 
 
 app = FastAPI(
@@ -72,6 +72,6 @@ from backend.api import files, git
 app.include_router(files.router, prefix="/api", tags=["files"])
 app.include_router(git.router, prefix="/api", tags=["git"])
 
-from backend.tasks.routes import router as tasks_router
+from backend.sessions.routes import router as sessions_router
 
-app.include_router(tasks_router, tags=["tasks"])
+app.include_router(sessions_router, tags=["sessions"])

@@ -1,6 +1,7 @@
-"""Task routes — FastAPI router for AG-UI task management.
+"""Session routes — FastAPI router for AG-UI session/task management.
 
 Endpoints handle task CRUD, run lifecycle, approval flows, and SSE streaming.
+Routes keep the /v2/tasks prefix for backward compatibility.
 """
 
 import asyncio
@@ -19,7 +20,7 @@ from backend.agui.events import (
     TextMessageStartEvent,
 )
 from backend.agui.sse import encode_sse_event, event_stream
-from backend.tasks.types import (
+from backend.sessions.types import (
     ApprovalRequest,
     ApprovalResponse,
     CreateTaskRequest,
@@ -39,23 +40,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v2")
 
 
-# ── Helper to get TaskStore from app state ──────────────────────────────────
+# ── Helper to get SessionStore from app state ─────────────────────────────────
 
 
 def _get_store(request: Request):
-    """Retrieve TaskStore from app.state (set during lifespan startup)."""
-    store = getattr(request.app.state, "task_store", None)
+    """Retrieve SessionStore from app.state (set during lifespan startup)."""
+    store = getattr(request.app.state, "session_store", None)
     if store is None:
-        raise HTTPException(status_code=503, detail="TaskStore not initialized")
+        raise HTTPException(status_code=503, detail="SessionStore not initialized")
     return store
 
 
 def _get_manager(request: Request):
-    """Retrieve TaskManager from app.state (set during lifespan startup).
+    """Retrieve SessionManager from app.state (set during lifespan startup).
 
     Returns None if not yet wired.
     """
-    return getattr(request.app.state, "task_manager", None)
+    return getattr(request.app.state, "session_manager", None)
 
 
 # ── Task CRUD ───────────────────────────────────────────────────────────────
@@ -137,12 +138,12 @@ async def cancel_task_run(task_id: str, request: Request):
     """Cancel the current run for a task via ACP session/cancel."""
     manager = _get_manager(request)
     if manager is None:
-        raise HTTPException(status_code=503, detail="Task manager not available")
+        raise HTTPException(status_code=503, detail="Session manager not available")
     try:
         await manager.cancel_run(task_id)
         return {"success": True, "taskId": task_id}
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"No active task: {task_id}")
+        raise HTTPException(status_code=404, detail=f"No active session: {task_id}")
 
 
 @router.post("/tasks/{task_id}/stop")
@@ -342,7 +343,7 @@ async def set_mode(task_id: str, body: SetModeRequest, request: Request):
     """Switch agent mode for a task."""
     manager = _get_manager(request)
     if manager is None:
-        raise HTTPException(status_code=503, detail="TaskManager not initialized")
+        raise HTTPException(status_code=503, detail="SessionManager not initialized")
     try:
         await manager.set_mode(task_id, body.modeId)
         return {"success": True, "modeId": body.modeId}
@@ -358,7 +359,7 @@ async def set_model(task_id: str, body: SetModelRequest, request: Request):
     """Switch model for a task."""
     manager = _get_manager(request)
     if manager is None:
-        raise HTTPException(status_code=503, detail="TaskManager not initialized")
+        raise HTTPException(status_code=503, detail="SessionManager not initialized")
     try:
         await manager.set_model(task_id, body.modelId)
         return {"success": True, "modelId": body.modelId}
@@ -376,7 +377,7 @@ async def execute_command(
     """Execute a slash command on a task."""
     manager = _get_manager(request)
     if manager is None:
-        raise HTTPException(status_code=503, detail="TaskManager not initialized")
+        raise HTTPException(status_code=503, detail="SessionManager not initialized")
     try:
         await manager.execute_command(task_id, body.command, body.args)
         return {"success": True, "command": body.command}
