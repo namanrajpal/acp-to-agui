@@ -17,14 +17,14 @@
   <img src="docs/assets/reference-ui-over-claudecode.gif" alt="Reference UI powered by Claude Code" width="49%"/>
 </p>
 <p align="center">
-  <em>Left: Kiro CLI powering the workspace. Right: same UI with Claude Code — just swap the agent.</em>
+  <em>Left: Kiro CLI powering the workspace. Right: same UI with Claude Code. Just swap the agent.</em>
 </p>
 
 <p align="center">
   <img src="docs/assets/ui-toggle.gif" alt="Agent toggle on project selector" width="500"/>
 </p>
 <p align="center">
-  <em>Select your agent from the frontend. No restart needed — each session spawns the chosen binary.</em>
+  <em>Select your agent from the frontend. No restart needed. Each session spawns the chosen binary.</em>
 </p>
 
 ---
@@ -33,7 +33,7 @@
 
 There are now **33+ coding agents** that support the [Agent Client Protocol (ACP)](https://agentclientprotocol.com): Kiro, Claude Code, Codex CLI, Cursor, Gemini CLI, GitHub Copilot, OpenCode, Cline, and many more. They all speak JSON-RPC 2.0 over stdio. You can use them in terminals. You can use them in editors.
 
-But teams keep needing **purpose-built web interfaces** on top of these agents — a micro-app creation platform where non-engineers iterate on device experiences, a report generation UI where analysts interact with agents without learning CLI commands, deployment dashboards with team-visible approval flows, domain-specific editors powered by an agent underneath.
+But teams keep needing **purpose-built web interfaces** on top of these agents: a micro-app creation platform where non-engineers iterate on device experiences, a report generation UI where analysts interact with agents without learning CLI commands, deployment dashboards with team-visible approval flows, domain-specific editors powered by an agent underneath.
 
 Today, building any of these means implementing the protocol bridge yourself: parsing JSON-RPC streams, managing subprocesses, translating events into something a web frontend can render.
 
@@ -70,11 +70,11 @@ Clone this repo, select your agent, and you have a working web UI with streaming
 
 Same agent underneath. Different frontend for each audience:
 
-- **Micro-app creation platforms** — non-engineers iterating on apps through a web workspace
-- **Report generation** — analysts interacting with agents without CLI commands
-- **Deployment dashboards** — team-visible approval flows for infrastructure changes
-- **Domain-specific IDEs** — focused editors (config, pipelines) powered by an agent
-- **Any internal tooling** — the agent does the heavy lifting, users get a tailored UI
+- **Micro-app creation platforms**: non-engineers iterating on apps through a web workspace
+- **Report generation**: analysts interacting with agents without CLI commands
+- **Deployment dashboards**: team-visible approval flows for infrastructure changes
+- **Domain-specific IDEs**: focused editors (config, pipelines) powered by an agent
+- **Any internal tooling**: the agent does the heavy lifting, users get a tailored UI
 
 ## Why AG-UI?
 
@@ -105,7 +105,7 @@ There are two ways to select an agent:
 
 ### 1. Frontend selector (per-session)
 
-The workspace UI has an agent toggle on the project selector page. Pick Kiro, Claude, Codex, or OpenCode — the selected agent command is sent with the session creation request and the backend spawns that specific binary.
+The workspace UI has an agent toggle on the project selector page. Pick Kiro, Claude, Codex, or OpenCode. the selected agent command is sent with the session creation request and the backend spawns that specific binary.
 
 This means you can switch agents between sessions without restarting anything.
 
@@ -218,7 +218,7 @@ ACP and AG-UI do not map one-to-one. These required a normalization layer:
 
 ## How It Works
 
-1. **Select an agent** — via the UI toggle, the `agentCommand` API field, or the `bridge.config.json` default
+1. **Select an agent**. via the UI toggle, the `agentCommand` API field, or the `bridge.config.json` default
 2. **Create a session**: `POST /v2/tasks` spawns the agent subprocess, initializes ACP
 3. **Start a run**: `POST /v2/tasks/{id}/run` sends your prompt via JSON-RPC
 4. **Stream events**: `GET /v2/tasks/{id}/events?runId=...` returns AG-UI SSE stream
@@ -262,7 +262,7 @@ ACP and AG-UI do not map one-to-one. These required a normalization layer:
 | **Codex CLI** (codex-acp) | 0.14.0 | 🟡 Supported | Via Zed adapter, tool calls + edit review |
 | **OpenCode** | 1.15.6 | 🟡 Supported | Native ACP, 2 agents (build/plan), MCP servers |
 
-Kiro and Claude Agent tested end-to-end with zero code changes between them. Codex and OpenCode are ACP-compatible and supported by this bridge — community testing welcome. Just swap `agentCommand`. See [`docs/demo-walkthrough.md`](docs/demo-walkthrough.md) for full test results and [`example-frontends/agents.md`](example-frontends/agents.md) for setup guides.
+Kiro and Claude Agent tested end-to-end with zero code changes between them. Codex and OpenCode are ACP-compatible and supported by this bridge; community testing welcome. Just swap `agentCommand`. See [`docs/demo-walkthrough.md`](docs/demo-walkthrough.md) for full test results and [`example-frontends/agents.md`](example-frontends/agents.md) for setup guides.
 
 <details>
 <summary>Full ACP Ecosystem (33+ agents)</summary>
