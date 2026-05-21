@@ -1,4 +1,7 @@
 <h1 align="center"><a href="https://agentclientprotocol.com">ACP</a> → <a href="https://docs.ag-ui.com">AG-UI</a></h1>
+<p align="center">
+  <a href="https://agentclientprotocol.com">agentclientprotocol.com</a> &nbsp;→&nbsp; <a href="https://docs.ag-ui.com">docs.ag-ui.com</a>
+</p>
 
 <p align="center">
   A reference bridge that gives any ACP coding agent (Kiro, Claude, Codex, etc.) a web UI via the AG-UI protocol.
